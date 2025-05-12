@@ -23,9 +23,6 @@ export default function ChatForm() {
       const apiUrl = 'https://api-peach-omega-11.vercel.app';
       console.log('Sending request to:', apiUrl);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: {
@@ -37,10 +34,8 @@ export default function ChatForm() {
         body: JSON.stringify(formData),
         mode: 'cors',
         credentials: 'omit',
-        signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
       console.log('Response status:', response.status);
       
       if (!response.ok) {
@@ -54,8 +49,6 @@ export default function ChatForm() {
       }
 
       let result = '';
-      let lastChunkTime = Date.now();
-      const CHUNK_TIMEOUT = 5000; // 5 second timeout between chunks
 
       try {
         while (true) {
@@ -63,19 +56,10 @@ export default function ChatForm() {
           
           if (done) break;
           
-          const currentTime = Date.now();
-          if (currentTime - lastChunkTime > CHUNK_TIMEOUT) {
-            throw new Error('Stream timeout: No data received for too long');
-          }
-          
-          lastChunkTime = currentTime;
           result += new TextDecoder().decode(value);
         }
       } catch (error) {
         console.error('Error reading stream:', error);
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw new Error('Request timed out. Please try again.');
-        }
         throw new Error(`Error reading response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
