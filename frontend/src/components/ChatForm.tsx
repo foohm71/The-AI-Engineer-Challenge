@@ -21,17 +21,26 @@ export default function ChatForm() {
 
     try {
       const apiUrl = 'https://api-peach-omega-11.vercel.app';
+      console.log('Sending request to:', apiUrl);
+      
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/plain',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
         },
         body: JSON.stringify(formData),
+        mode: 'cors',
+        credentials: 'omit',
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const reader = response.body?.getReader();
@@ -40,17 +49,26 @@ export default function ChatForm() {
       }
 
       let result = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        result += new TextDecoder().decode(value);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += new TextDecoder().decode(value);
+        }
+      } catch (readError) {
+        console.error('Error reading stream:', readError);
+        throw new Error(`Error reading response: ${readError.message}`);
+      }
+
+      if (!result) {
+        throw new Error('Empty response received');
       }
 
       // Store the result in localStorage to access it on the result page
       localStorage.setItem('chatResult', result);
       router.push('/result');
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error details:', error);
       setError(error instanceof Error ? error.message : 'An error occurred while processing your request.');
     } finally {
       setIsLoading(false);
@@ -70,6 +88,15 @@ export default function ChatForm() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
           <span className="block sm:inline">{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+          >
+            <span className="sr-only">Dismiss</span>
+            <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
       
@@ -86,6 +113,7 @@ export default function ChatForm() {
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           required
           autoComplete="off"
+          enterKeyHint="next"
         />
       </div>
 
@@ -101,6 +129,7 @@ export default function ChatForm() {
           rows={4}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           required
+          enterKeyHint="next"
         />
       </div>
 
@@ -117,6 +146,7 @@ export default function ChatForm() {
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           required
           autoComplete="off"
+          enterKeyHint="done"
         />
       </div>
 
