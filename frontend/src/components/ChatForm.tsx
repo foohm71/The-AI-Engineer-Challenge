@@ -18,7 +18,8 @@ export default function ChatForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const apiUrl = 'https://api-peach-omega-11.vercel.app';
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
