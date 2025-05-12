@@ -55,9 +55,9 @@ export default function ChatForm() {
           if (done) break;
           result += new TextDecoder().decode(value);
         }
-      } catch (readError) {
-        console.error('Error reading stream:', readError);
-        throw new Error(`Error reading response: ${readError.message}`);
+      } catch (error) {
+        console.error('Error reading stream:', error);
+        throw new Error(`Error reading response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       if (!result) {
