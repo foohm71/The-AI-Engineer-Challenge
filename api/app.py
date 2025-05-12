@@ -9,7 +9,6 @@ from openai import OpenAI
 import os
 from typing import Optional
 import json
-import asyncio
 
 # Initialize FastAPI application with a title
 app = FastAPI(title="OpenAI Chat API")
@@ -57,40 +56,22 @@ async def chat(request: Request):
         # Initialize OpenAI client with the provided API key
         client = OpenAI(api_key=chat_request.api_key)
         
-        # Create a streaming response with timeout handling
+        # Create a streaming response
         async def generate():
             try:
-                # Set a timeout for the OpenAI API call
-                async with asyncio.timeout(30):  # 30 second timeout
-                    stream = client.chat.completions.create(
-                        model=chat_request.model,
-                        messages=[
-                            {"role": "system", "content": chat_request.developer_message},
-                            {"role": "user", "content": chat_request.user_message}
-                        ],
-                        stream=True
-                    )
-                    
-                    # Buffer for collecting chunks
-                    buffer = []
-                    
-                    for chunk in stream:
-                        if chunk.choices[0].delta.content:
-                            content = chunk.choices[0].delta.content
-                            buffer.append(content)
-                            # Send chunks more frequently to avoid timeout
-                            if len(buffer) >= 5:
-                                yield "".join(buffer)
-                                buffer = []
-                    
-                    # Send any remaining content
-                    if buffer:
-                        yield "".join(buffer)
+                stream = client.chat.completions.create(
+                    model=chat_request.model,
+                    messages=[
+                        {"role": "system", "content": chat_request.developer_message},
+                        {"role": "user", "content": chat_request.user_message}
+                    ],
+                    stream=True
+                )
+                
+                for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
                         
-            except asyncio.TimeoutError:
-                error_message = "Request timed out. Please try again."
-                print(error_message)
-                yield error_message
             except Exception as e:
                 error_message = f"Error in stream: {str(e)}"
                 print(error_message)
@@ -106,8 +87,6 @@ async def chat(request: Request):
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "Connection": "keep-alive",
-                "Transfer-Encoding": "chunked",
             }
         )
     
