@@ -12,10 +12,12 @@ export default function ChatForm() {
     api_key: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       const apiUrl = 'https://api-peach-omega-11.vercel.app';
@@ -23,12 +25,13 @@ export default function ChatForm() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/plain',
         },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const reader = response.body?.getReader();
@@ -48,7 +51,7 @@ export default function ChatForm() {
       router.push('/result');
     } catch (error) {
       console.error('Error:', error);
-      alert('An error occurred while processing your request.');
+      setError(error instanceof Error ? error.message : 'An error occurred while processing your request.');
     } finally {
       setIsLoading(false);
     }
@@ -64,6 +67,12 @@ export default function ChatForm() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto p-6 space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+      
       <div className="space-y-2">
         <label htmlFor="developer_message" className="block text-sm font-medium text-gray-700">
           My Mood
@@ -76,6 +85,7 @@ export default function ChatForm() {
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           required
+          autoComplete="off"
         />
       </div>
 
@@ -106,6 +116,7 @@ export default function ChatForm() {
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           required
+          autoComplete="off"
         />
       </div>
 
