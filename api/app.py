@@ -1,6 +1,6 @@
 # Import required FastAPI components for building the API
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 # Import Pydantic for data validation and settings management
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 import os
 from typing import Optional
+import json
 
 # Initialize FastAPI application with a title
 app = FastAPI(title="OpenAI Chat API")
@@ -32,21 +33,37 @@ class ChatRequest(BaseModel):
     model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
 
+@app.options("/api/chat")
+async def options_chat():
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
-async def chat(request: ChatRequest):
+async def chat(request: Request):
     try:
+        # Parse request body
+        body = await request.json()
+        chat_request = ChatRequest(**body)
+        
         # Initialize OpenAI client with the provided API key
-        client = OpenAI(api_key=request.api_key)
+        client = OpenAI(api_key=chat_request.api_key)
         
         # Create a streaming response
         async def generate():
             try:
                 stream = client.chat.completions.create(
-                    model=request.model,
+                    model=chat_request.model,
                     messages=[
-                        {"role": "system", "content": request.developer_message},
-                        {"role": "user", "content": request.user_message}
+                        {"role": "system", "content": chat_request.developer_message},
+                        {"role": "user", "content": chat_request.user_message}
                     ],
                     stream=True
                 )
@@ -56,7 +73,9 @@ async def chat(request: ChatRequest):
                         yield chunk.choices[0].delta.content
                         
             except Exception as e:
-                yield f"Error: {str(e)}"
+                error_message = f"Error in stream: {str(e)}"
+                print(error_message)  # Log the error
+                yield error_message
         
         return StreamingResponse(
             generate(),
@@ -65,17 +84,35 @@ async def chat(request: ChatRequest):
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "*",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
             }
         )
     
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid JSON: {str(e)}"
+        )
     except Exception as e:
-        # Handle any errors that occur during processing
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in chat endpoint: {str(e)}")  # Log the error
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 # Define a health check endpoint to verify API status
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok"}
+    return JSONResponse(
+        content={"status": "ok"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 # Entry point for running the application directly
 if __name__ == "__main__":
