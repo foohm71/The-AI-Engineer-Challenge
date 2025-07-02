@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 
 export default function ResultPage() {
   const router = useRouter();
@@ -30,7 +31,11 @@ export default function ResultPage() {
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Response</h2>
         <div className="prose max-w-none">
-          <pre className="whitespace-pre-wrap">{result}</pre>
+          {result && (
+            <div className="answer-container">
+              <ReactMarkdown>{result}</ReactMarkdown>
+            </div>
+          )}
         </div>
       </div>
     </div>

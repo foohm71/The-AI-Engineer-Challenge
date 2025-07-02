@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatRequest } from '@/types/api';
+import ReactMarkdown from 'react-markdown';
 
 export default function ChatForm() {
   const router = useRouter();
